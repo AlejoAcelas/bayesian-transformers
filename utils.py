@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 device = "cuda" if torch.cuda.is_available() else "cpu"
 import scipy, os
 import numpy as np
+import re
 
 from Visualize_dice_roll import Visualize_dice_roll
 
@@ -167,7 +168,8 @@ class BayesianTransformer():
             n_heads=1,
             d_mlp=256,
             d_vocab=len(self.params)+1,               # vocabuliary length; heads/tails options
-            n_ctx=self.n_trials+1,
+            # n_ctx=self.n_trials+1,
+            n_ctx=100,
             act_fn='relu',
             normalization_type="LN",
         )
@@ -366,8 +368,14 @@ class BayesianTransformer():
 
         #
         print ("Loading: ", self.fname_model)
-        self.model = torch.load(self.fname_model)
-        self.model.to('cpu')
+        filename = re.split('\.btrans', self.fname_model)[0]
+        state_dict = torch.load(filename + '.pt')
+        state_dict = self.model.center_writing_weights(state_dict)
+        state_dict = self.model.center_unembed(state_dict)
+        state_dict = self.model.fold_layer_norm(state_dict)
+        state_dict = self.model.fold_value_biases(state_dict)
+        self.model.load_state_dict(state_dict, strict=False)
+        # self.model.to('cpu')
 
         #print ("... model loaded ...")
         #print ("self.model: ", self.model)
